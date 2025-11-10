@@ -284,7 +284,7 @@ const startMediaDevice = () => {
             document.getElementById('recordIcon').innerHTML = 'mic';
             blockUI();
 
-            audioBlob = new Blob(audioChunks, { type: 'audio/ogg;' });
+            audioBlob = new Blob(audioChunks, { type: 'audio/mp3;' });
 
             let audioUrl = URL.createObjectURL(audioBlob);
             audioRecorded = new Audio(audioUrl);

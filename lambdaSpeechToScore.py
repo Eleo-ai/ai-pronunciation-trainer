@@ -81,7 +81,7 @@ def lambda_handler(event, context):
         }
 
     try:
-        tmp = tempfile.NamedTemporaryFile(suffix=".ogg", delete=False)
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
         tmp_name = tmp.name
 
         try:
