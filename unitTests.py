@@ -8,6 +8,11 @@ import json
 import pronunciationTrainer
 
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+
 def test_category(category: int, threshold_min: int, threshold_max: int):
     event = {'body': json.dumps({'category': category, 'language': 'de'})}
     for _ in range(1000):

@@ -1,0 +1,59 @@
+# Ignore development and test files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+.git
+.github
+.vscode
+.idea
+*.md
+README*
+LICENSE
+
+# Ignore virtual environments
+venv/
+env/
+ENV/
+
+# Ignore test files
+tests/
+test_*.py
+*_test.py
+unitTests.py
+
+# Ignore local dev files
+.env
+.env.local
+config.example.txt
+run_local.py
+webApp.py
+
+# Ignore static assets (not needed in Lambda)
+static/
+templates/
+images/
+
+# Ignore SAM and deployment artifacts
+.aws-sam/
+samconfig.toml
+template.yaml
+serverless.yml
+deploy.sh
+*.sh
+
+# Ignore documentation
+DEPLOYMENT.md
+QUICK_START.md
+REMOVED_PYTORCH.md
+
+# Ignore layers
+layers/
+
+

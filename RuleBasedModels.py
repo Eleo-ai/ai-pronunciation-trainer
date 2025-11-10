@@ -1,5 +1,4 @@
 import ModelInterfaces
-import torch
 import numpy as np
 import epitran
 import eng_to_ipa

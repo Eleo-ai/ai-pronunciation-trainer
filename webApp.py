@@ -4,7 +4,6 @@ import os
 from flask_cors import CORS
 import json
 
-import lambdaTTS
 import lambdaSpeechToScore
 import lambdaGetSample
 
@@ -20,12 +19,6 @@ def main():
     return render_template('main.html')
 
 
-@app.route(rootPath+'/getAudioFromText', methods=['POST'])
-def getAudioFromText():
-    event = {'body': json.dumps(request.get_json(force=True))}
-    return lambdaTTS.lambda_handler(event, [])
-
-
 @app.route(rootPath+'/getSample', methods=['POST'])
 def getNext():
     event = {'body':  json.dumps(request.get_json(force=True))}
@@ -34,7 +27,6 @@ def getNext():
 
 @app.route(rootPath+'/GetAccuracyFromRecordedAudio', methods=['POST'])
 def GetAccuracyFromRecordedAudio():
-
     try:
         event = {'body': json.dumps(request.get_json(force=True))}
         lambda_correct_output = lambdaSpeechToScore.lambda_handler(event, [])
@@ -55,7 +47,8 @@ def GetAccuracyFromRecordedAudio():
 
 
 if __name__ == "__main__":
-    language = 'de'
+    print("Starting web app...")
+    language = 'en'
     print(os.system('pwd'))
     webbrowser.open_new('http://127.0.0.1:3000/')
     app.run(host="0.0.0.0", port=3000)

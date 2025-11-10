@@ -1,18 +1,24 @@
--f https://download.pytorch.org/whl/torch_stable.html
-torch 
-torchaudio 
-soundfile 
-omegaconf
-epitran 
+# Core dependencies (serverless-compatible)
+numpy
+scipy
+soundfile
 audioread
-requests
-dtwalign
+
+# Text and phoneme processing
+epitran 
 eng_to_ipa
+dtwalign
+
+# Data handling
 pandas
+pickle-mixin
+
+# API client libraries
+requests
+
+# Web framework (for local development/testing)
 flask
 flask_cors
-pickle-mixin
-sqlalchemy
-transformers
-sentencepiece
-transformers
+
+# Environment variable loading (for local development)
+python-dotenv

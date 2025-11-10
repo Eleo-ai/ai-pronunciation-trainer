@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AI Pronunciation Trainer - Serverless Speech Evaluation API
+
+Globals:
+    Function:
+        Timeout: 120
+        MemorySize: 1024
+        Environment:
+            Variables:
+                USE_API_ASR: true
+
+Parameters:
+    WhisperApiKey:
+        Type: String
+        NoEcho: true
+        Description: Your OpenAI API key (get it at https://platform.openai.com/api-keys)
+
+    OpenaiApiBase:
+        Type: String
+        Default: 'https://whisper-large-v3-turbo.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1'
+        Description: OpenAI API base URL (default is official OpenAI API)
+
+Resources:
+    # API Gateway
+    PronunciationTrainerApi:
+        Type: AWS::Serverless::Api
+        Properties:
+            StageName: prod
+            Cors:
+                AllowMethods: "'GET,POST,OPTIONS'"
+                AllowHeaders: "'*'"
+                AllowOrigin: "'*'"
+            GatewayResponses:
+                DEFAULT_4XX:
+                    ResponseParameters:
+                        Headers:
+                            Access-Control-Allow-Origin: "'*'"
+                            Access-Control-Allow-Headers: "'*'"
+                DEFAULT_5XX:
+                    ResponseParameters:
+                        Headers:
+                            Access-Control-Allow-Origin: "'*'"
+                            Access-Control-Allow-Headers: "'*'"
+
+    # Main Lambda Function - Speech to Score
+    SpeechToScoreFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            PackageType: Image
+            ImageUri: .
+            Description: Evaluates pronunciation accuracy from recorded audio using OpenAI Whisper API
+            Environment:
+                Variables:
+                    USE_API_ASR: true
+                    WHISPER_API_KEY: !Ref WhisperApiKey
+                    OPENAI_API_BASE: !Ref OpenaiApiBase
+            Events:
+                ApiEvent:
+                    Type: Api
+                    Properties:
+                        RestApiId: !Ref PronunciationTrainerApi
+                        Path: /GetAccuracyFromRecordedAudio
+                        Method: POST
+                # Warm-up event: ping function every 5 minutes to prevent cold starts
+                WarmUpEvent:
+                    Type: Schedule
+                    Properties:
+                        Schedule: rate(5 minutes)
+                        Input: '{"warmup": true, "language": "en"}'
+            Tags:
+                Application: PronunciationTrainer
+                Component: SpeechEvaluation
+        Metadata:
+            Dockerfile: Dockerfile
+            DockerContext: .
+            DockerTag: python3.12-v1
+
+    # CloudWatch Log Group with retention
+    SpeechToScoreFunctionLogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+            LogGroupName: !Sub '/aws/lambda/${SpeechToScoreFunction}'
+            RetentionInDays: 7
+
+    # CloudWatch Alarms
+    SpeechToScoreFunctionErrorAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmDescription: Alert when Lambda function errors exceed threshold
+            MetricName: Errors
+            Namespace: AWS/Lambda
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            Threshold: 5
+            ComparisonOperator: GreaterThanThreshold
+            Dimensions:
+                - Name: FunctionName
+                  Value: !Ref SpeechToScoreFunction
+
+    SpeechToScoreFunctionThrottleAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmDescription: Alert when Lambda function is throttled
+            MetricName: Throttles
+            Namespace: AWS/Lambda
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanThreshold
+            Dimensions:
+                - Name: FunctionName
+                  Value: !Ref SpeechToScoreFunction
+
+Outputs:
+    ApiUrl:
+        Description: API Gateway endpoint URL for production stage
+        Value: !Sub 'https://${PronunciationTrainerApi}.execute-api.${AWS::Region}.amazonaws.com/prod/'
+        Export:
+            Name: !Sub '${AWS::StackName}-ApiUrl'
+
+    SpeechToScoreFunctionArn:
+        Description: ARN of the Speech to Score Lambda Function
+        Value: !GetAtt SpeechToScoreFunction.Arn
+        Export:
+            Name: !Sub '${AWS::StackName}-SpeechToScoreFunctionArn'
+
+    ApiId:
+        Description: API Gateway ID
+        Value: !Ref PronunciationTrainerApi
+        Export:
+            Name: !Sub '${AWS::StackName}-ApiId'

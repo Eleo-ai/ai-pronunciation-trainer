@@ -1,0 +1,18 @@
+version = 0.1
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+stack_name = "pronunciations"
+resolve_s3 = true
+s3_prefix = "pronunciations"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+parameter_overrides = "OpenaiApiBase=\"https://whisper-large-v3-turbo.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1\""
+image_repositories = ["SpeechToScoreFunction=478783988671.dkr.ecr.eu-central-1.amazonaws.com/pronunciations88f1e8fa/speechtoscorefunction635c7a9crepo"]
+
+[default.global.parameters]
+region = "eu-central-1"
