@@ -2,9 +2,7 @@
 import pandas as pd
 import json
 import RuleBasedModels
-import epitran
 import random
-import pickle
 
 
 class TextDataset():
@@ -24,7 +22,7 @@ class TextDataset():
 sample_folder = "./databases/"
 lambda_database = {}
 lambda_ipa_converter = {}
-available_languages = ['de', 'en']
+available_languages = ['de', 'en', 'zh', 'cs', 'da', 'nl', 'fi', 'fr', 'de', 'it', 'es', 'ja', 'ko', 'pl', 'pt', 'no', 'sv', 'tr']
 
 for language in available_languages:
     df = pd.read_csv(sample_folder+'data_'+language+'.csv',delimiter=';')

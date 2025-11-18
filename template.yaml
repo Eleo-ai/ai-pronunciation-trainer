@@ -5,7 +5,7 @@ Description: AI Pronunciation Trainer - Serverless Speech Evaluation API
 Globals:
     Function:
         Timeout: 120
-        MemorySize: 1024
+        MemorySize: 1536
         Environment:
             Variables:
                 USE_API_ASR: true
@@ -18,7 +18,7 @@ Parameters:
 
     OpenaiApiBase:
         Type: String
-        Default: 'https://whisper-large-v3-turbo.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1'
+        Default: 'https://whisper-large-v3.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1'
         Description: OpenAI API base URL (default is official OpenAI API)
 
 Resources:

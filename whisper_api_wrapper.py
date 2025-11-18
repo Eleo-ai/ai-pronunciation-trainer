@@ -81,7 +81,7 @@ class WhisperAPIModel(IASRModel):
                 'file': ('audio.wav', audio_file, 'audio/wav')
             }
             data = {
-                'model': 'whisper-large-v3-turbo',
+                'model': 'whisper-large-v3',
                 'response_format': 'verbose_json',
                 'timestamp_granularities[]': 'word'
             }

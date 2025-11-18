@@ -1,24 +1,12 @@
-# Core dependencies (serverless-compatible)
-numpy
-scipy
+-f https://download.pytorch.org/whl/torch_stable.html
+torch 
+torchaudio 
 soundfile
-audioread
-
-# Text and phoneme processing
 epitran 
-eng_to_ipa
-dtwalign
-
-# Data handling
-pandas
-pickle-mixin
-
-# API client libraries
+audioread
 requests
-
-# Web framework (for local development/testing)
+dtwalign
+eng_to_ipa
+pandas
 flask
 flask_cors
-
-# Environment variable loading (for local development)
-python-dotenv
