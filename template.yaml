@@ -4,8 +4,8 @@ Description: AI Pronunciation Trainer - Serverless Speech Evaluation API
 
 Globals:
     Function:
-        Timeout: 120
-        MemorySize: 1536
+        Timeout: 240
+        MemorySize: 3072
         Environment:
             Variables:
                 USE_API_ASR: true
@@ -55,6 +55,9 @@ Resources:
                     USE_API_ASR: true
                     WHISPER_API_KEY: !Ref WhisperApiKey
                     OPENAI_API_BASE: !Ref OpenaiApiBase
+                    HF_HOME: /tmp
+                    TRANSFORMERS_CACHE: /tmp
+                    HUGGINGFACE_HUB_CACHE: /tmp
             Events:
                 ApiEvent:
                     Type: Api

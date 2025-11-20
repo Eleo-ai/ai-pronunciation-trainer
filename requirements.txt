@@ -10,3 +10,4 @@ eng_to_ipa
 pandas
 flask
 flask_cors
+transformers

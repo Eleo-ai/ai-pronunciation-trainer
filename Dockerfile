@@ -20,6 +20,7 @@ RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
 COPY lambdaSpeechToScore.py ${LAMBDA_TASK_ROOT}/
 COPY pronunciationTrainer.py ${LAMBDA_TASK_ROOT}/
 COPY models.py ${LAMBDA_TASK_ROOT}/
+COPY whisper_wrapper.py ${LAMBDA_TASK_ROOT}/
 COPY whisper_api_wrapper.py ${LAMBDA_TASK_ROOT}/
 COPY ModelInterfaces.py ${LAMBDA_TASK_ROOT}/
 COPY RuleBasedModels.py ${LAMBDA_TASK_ROOT}/

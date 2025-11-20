@@ -14,8 +14,11 @@ def getASRModel(language: str, use_whisper: bool = True, use_api: bool = True) -
         WhisperAPIModel instance
     """
     # Always use OpenAI Whisper API
-    from whisper_api_wrapper import WhisperAPIModel
-    return WhisperAPIModel()
+    # from whisper_api_wrapper import WhisperAPIModel
+    # return WhisperAPIModel()
+
+    from whisper_wrapper import WhisperASRModel
+    return WhisperASRModel()
 
 
 def getTTSModel(language: str):
