@@ -1,46 +1,49 @@
 """
-OpenAI Whisper API Model for Serverless Deployment
-Uses OpenAI's Whisper API for speech recognition
+AWS SageMaker Whisper Model Wrapper for Serverless Deployment
+Uses AWS SageMaker deployed Whisper model for speech recognition
 """
 
 import numpy as np
 from ModelInterfaces import IASRModel
 from typing import Union
 import os
-import requests
+import boto3
+import json
 import tempfile
 import soundfile as sf
+import base64
 
 
 class WhisperAPIModel(IASRModel):
     """
-    OpenAI Whisper API implementation for serverless environments.
+    AWS SageMaker Whisper implementation for serverless environments.
     
-    Environment variables required:
-    - WHISPER_API_KEY: Your OpenAI API key
-    - OPENAI_API_BASE: (Optional) Custom API base URL, defaults to https://api.openai.com/v1
+    Environment variables optional:
+    - SAGEMAKER_ENDPOINT_NAME: SageMaker endpoint name (defaults to 'redparrot-whisper-base-provisioned')
+    - AWS_REGION: AWS region for SageMaker (defaults to 'eu-central-1')
     
-    Get your API key at: https://platform.openai.com/api-keys
+    AWS credentials should be configured via IAM role or environment variables:
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
     """
     
-    def __init__(self, api_key=None, api_base=None):
-        self.api_key = api_key or os.getenv('WHISPER_API_KEY') or os.getenv('OPENAI_API_KEY')
-        self.api_base = api_base or os.getenv('OPENAI_API_BASE', 'https://api.openai.com/v1')
+    def __init__(self, endpoint_name=None, region_name=None):
+        self.endpoint_name = endpoint_name or os.getenv('SAGEMAKER_ENDPOINT_NAME', 'redparrot-whisper-base-provisioned')
+        self.region_name = region_name or os.getenv('AWS_REGION', 'eu-central-1')
         
-        if not self.api_key:
-            raise ValueError(
-                "WHISPER_API_KEY or OPENAI_API_KEY environment variable must be set. "
-                "Get your key at: https://platform.openai.com/api-keys"
-            )
+        # Initialize SageMaker runtime client
+        self.sagemaker_runtime = boto3.client(
+            'sagemaker-runtime',
+            region_name=self.region_name
+        )
         
         self._transcript = ""
         self._word_locations = []
         self.sample_rate = 16000
-        self.endpoint = f"{self.api_base.rstrip('/')}/audio/transcriptions"
     
     def processAudio(self, audio: Union[np.ndarray, list]):
         """
-        Process audio through OpenAI Whisper API.
+        Process audio through AWS SageMaker Whisper endpoint.
         
         Args:
             audio: numpy array or list with shape (1, samples) or (samples,)
@@ -54,64 +57,88 @@ class WhisperAPIModel(IASRModel):
             audio = audio[0]  # Take first channel
         
         # Create temporary WAV file
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-            tmp_path = tmp_file.name
-            sf.write(tmp_path, audio, self.sample_rate)
+        # with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+        #     tmp_path = tmp_file.name
+        #     sf.write(tmp_path, audio, self.sample_rate)
         
         try:
-            # Call OpenAI Whisper API
-            result = self._call_openai_api(tmp_path)
+            # Call SageMaker Whisper endpoint
+            result = self._call_sagemaker_endpoint(audio)
             self._transcript = result['text']
             self._word_locations = result['word_locations']
             
         finally:
             # Clean up temp file
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
+            # if os.path.exists(tmp_path):
+            #     os.remove(tmp_path)
+            pass
     
-    def _call_openai_api(self, audio_path):
-        """Call OpenAI Whisper API"""
+    def _call_sagemaker_endpoint(self, audio):
+        """Call AWS SageMaker Whisper endpoint"""
         
-        headers = {
-            'Authorization': f'Bearer {self.api_key}'
+        # Read audio file and encode as base64
+        # with open(audio_path, 'rb') as audio_file:
+        #     audio_base64 = base64.b64encode(audio_file.read()).decode('utf-8')
+
+        payload = {
+            "audio": audio.tolist(),  # Convert numpy array to JSON-serializable list
+            "timestamps": True
         }
         
-        with open(audio_path, 'rb') as audio_file:
-            files = {
-                'file': ('audio.wav', audio_file, 'audio/wav')
-            }
-            data = {
-                'model': 'whisper-large-v3',
-                'response_format': 'verbose_json',
-                'timestamp_granularities[]': 'word'
-            }
+        try:
+            # Invoke SageMaker endpoint
+            response = self.sagemaker_runtime.invoke_endpoint(
+                EndpointName=self.endpoint_name,
+                ContentType='application/json',
+                Body=json.dumps(payload)  # Serialize payload to JSON string
+            )
+
             
-            response = requests.post(
-                self.endpoint,
-                headers=headers,
-                files=files,
-                data=data,
-                timeout=30
-            )
-        
-        if response.status_code != 200:
+            # Parse response
+            result = json.loads(response['Body'].read().decode('utf-8'))
+        except Exception as e:
             raise Exception(
-                f"OpenAI API Error: {response.status_code} - {response.text}\n"
-                f"Make sure your API key is valid and has credits available."
+                f"SageMaker endpoint error: {str(e)}\n"
+                f"Make sure the endpoint '{self.endpoint_name}' exists and is in service in region '{self.region_name}'.\n"
+                f"Also verify that your AWS credentials have permission to invoke SageMaker endpoints."
             )
         
-        result = response.json()
+        # Parse response - adapt to your endpoint's output format
+        # Common formats include:
+        # 1. Direct format: {"text": "...", "chunks": [...]}
+        # 2. Nested format: {"predictions": {"text": "...", "chunks": [...]}}
         
-        # Parse response
-        text = result.get('text', '')
-        words = result.get('words', [])
+        if 'predictions' in result:
+            result = result['predictions']
         
+        text = result.get('text', result.get('transcription', ''))
+        
+        # Handle different possible response formats for word-level timestamps
         word_locations = []
-        for word_info in words:
+        chunks = result.get('chunks', result.get('words', []))
+        
+        for word_info in chunks:
+            # Handle different timestamp formats
+            if 'timestamp' in word_info:
+                # Format: {"text": "word", "timestamp": [start, end]}
+                timestamp = word_info['timestamp']
+                start = timestamp[0] if timestamp[0] is not None else 0
+                end = timestamp[1] if timestamp[1] is not None else start + 0.5
+            elif 'start' in word_info and 'end' in word_info:
+                # Format: {"word": "text", "start": 0.0, "end": 0.5}
+                start = word_info['start']
+                end = word_info['end']
+            else:
+                # No timestamps available
+                start = 0
+                end = 0
+            
+            word_text = word_info.get('text', word_info.get('word', '')).strip()
+            
             word_locations.append({
-                'word': word_info.get('word', '').strip(),
-                'start_ts': word_info.get('start', 0) * self.sample_rate,
-                'end_ts': word_info.get('end', 0) * self.sample_rate,
+                'word': word_text,
+                'start_ts': start * self.sample_rate,
+                'end_ts': end * self.sample_rate,
                 'tag': 'processed'
             })
         
@@ -130,16 +157,16 @@ class WhisperAPIModel(IASRModel):
 
 
 # Convenience function for backward compatibility
-def get_api_asr_model(api_key=None):
+def get_api_asr_model(endpoint_name=None, region_name=None):
     """
-    Factory function to create OpenAI Whisper API model.
+    Factory function to create AWS SageMaker Whisper model.
     
     Usage:
-        # Using environment variables
+        # Using default endpoint name (redparrot-whisper-base-provisioned)
         model = get_api_asr_model()
         
         # Or specify explicitly
-        model = get_api_asr_model(api_key='sk-...')
+        model = get_api_asr_model(endpoint_name='redparrot-whisper-base-provisioned', region_name='eu-central-1')
     """
-    return WhisperAPIModel(api_key=api_key)
+    return WhisperAPIModel(endpoint_name=endpoint_name, region_name=region_name)
 

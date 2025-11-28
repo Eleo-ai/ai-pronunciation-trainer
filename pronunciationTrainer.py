@@ -173,10 +173,15 @@ class PronunciationTrainer:
         start_time = []
         end_time = []
         for word_idx in range(len(mapped_words_indices)):
-            start_time.append(float(word_locations[mapped_words_indices[word_idx]]
-                                    [0])/self.sampling_rate)
-            end_time.append(float(word_locations[mapped_words_indices[word_idx]]
-                                  [1])/self.sampling_rate)
+            # Check if the mapped index is valid
+            mapped_idx = mapped_words_indices[word_idx]
+            if mapped_idx == -1 or mapped_idx >= len(word_locations):
+                # Word not found or invalid index, use 0.0 as placeholder
+                start_time.append(0.0)
+                end_time.append(0.0)
+            else:
+                start_time.append(float(word_locations[mapped_idx][0])/self.sampling_rate)
+                end_time.append(float(word_locations[mapped_idx][1])/self.sampling_rate)
         return ' '.join([str(time) for time in start_time]), ' '.join([str(time) for time in end_time])
 
     ##################### END ASR Functions ###########################

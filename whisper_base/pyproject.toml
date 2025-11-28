@@ -1,0 +1,12 @@
+# Source - https://stackoverflow.com/a/50194143
+# Posted by Niko Fohr, modified by community. See post 'Timeline' for change history
+# Retrieved 2025-11-28, License - CC BY-SA 4.0
+
+[project]
+name = "whisper_base"
+version = "0.1.0"
+description = "Whisper-base aws deployment"
+
+[build-system]
+build-backend = "flit_core.buildapi"
+requires = ["flit_core >=3.2,<4"]

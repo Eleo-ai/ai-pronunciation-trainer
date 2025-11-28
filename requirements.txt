@@ -11,3 +11,4 @@ pandas
 flask
 flask_cors
 transformers
+boto3
