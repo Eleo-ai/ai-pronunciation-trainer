@@ -13,7 +13,7 @@ Globals:
 Parameters:
     SageMakerEndpointName:
         Type: String
-        Default: 'whisper-endpoint-cpu'
+        Default: 'whisper-endpoint-gpu'
         Description: Name of the deployed SageMaker Whisper endpoint
 
     AwsRegion:

@@ -7,7 +7,7 @@ import time
 import base64
 
 
-endpoint_name = 'whisper-endpoint-cpu'
+endpoint_name = 'whisper-endpoint-gpu'
 predictor = HuggingFacePredictor(endpoint_name=endpoint_name)
 predictor.serializer = JSONSerializer()
 predictor.content_type = 'application/json'

@@ -25,11 +25,17 @@ class WhisperAPIModel(IASRModel):
     AWS credentials should be configured via IAM role or environment variables:
     - AWS_ACCESS_KEY_ID
     - AWS_SECRET_ACCESS_KEY
+    
+    Args:
+        endpoint_name: SageMaker endpoint name (optional)
+        region_name: AWS region (optional)
+        language: ISO 639-1 language code (e.g., 'en', 'pl', 'de') for improved accuracy (optional)
     """
     
-    def __init__(self, endpoint_name=None, region_name=None):
+    def __init__(self, endpoint_name=None, region_name=None, language=None):
         self.endpoint_name = endpoint_name or os.getenv('SAGEMAKER_ENDPOINT_NAME', 'redparrot-whisper-base-provisioned')
         self.region_name = region_name or os.getenv('AWS_REGION', 'eu-central-1')
+        self.language = language  # ISO 639-1 language code (e.g., 'en', 'pl', 'de')
         
         # Initialize SageMaker runtime client
         self.sagemaker_runtime = boto3.client(
@@ -84,6 +90,10 @@ class WhisperAPIModel(IASRModel):
             "audio": audio.tolist(),  # Convert numpy array to JSON-serializable list
             "timestamps": True
         }
+        
+        # Add language if specified (Whisper supports ISO 639-1 codes like 'en', 'pl', 'de')
+        if self.language:
+            payload["language"] = self.language
         
         try:
             # Invoke SageMaker endpoint
@@ -157,7 +167,7 @@ class WhisperAPIModel(IASRModel):
 
 
 # Convenience function for backward compatibility
-def get_api_asr_model(endpoint_name=None, region_name=None):
+def get_api_asr_model(endpoint_name=None, region_name=None, language=None):
     """
     Factory function to create AWS SageMaker Whisper model.
     
@@ -165,8 +175,8 @@ def get_api_asr_model(endpoint_name=None, region_name=None):
         # Using default endpoint name (redparrot-whisper-base-provisioned)
         model = get_api_asr_model()
         
-        # Or specify explicitly
-        model = get_api_asr_model(endpoint_name='redparrot-whisper-base-provisioned', region_name='eu-central-1')
+        # Or specify explicitly with language
+        model = get_api_asr_model(endpoint_name='redparrot-whisper-base-provisioned', region_name='eu-central-1', language='en')
     """
-    return WhisperAPIModel(endpoint_name=endpoint_name, region_name=region_name)
+    return WhisperAPIModel(endpoint_name=endpoint_name, region_name=region_name, language=language)
 

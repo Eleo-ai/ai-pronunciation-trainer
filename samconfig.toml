@@ -11,7 +11,7 @@ s3_prefix = "pronunciations"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 disable_rollback = true
-parameter_overrides = "SageMakerEndpointName=\"whisper-endpoint-cpu\" AwsRegion=\"eu-central-1\""
+parameter_overrides = "SageMakerEndpointName=\"whisper-endpoint-gpu\" AwsRegion=\"eu-central-1\""
 image_repositories = ["SpeechToScoreFunction=478783988671.dkr.ecr.eu-central-1.amazonaws.com/pronunciations88f1e8fa/speechtoscorefunction635c7a9crepo"]
 
 [default.global.parameters]
