@@ -2,7 +2,6 @@ import WordMetrics
 import numpy as np
 from string import punctuation
 from dtwalign import dtw_from_distance_matrix
-import time
 from typing import List, Tuple
 #from ortools.sat.python import cp_model
 
@@ -128,19 +127,17 @@ def get_best_mapped_words(words_estimated: list, words_real: list,use_dtw:bool =
 
     word_distance_matrix = get_word_distance_matrix(
         words_estimated, words_real)
-
-    start = time.time()
     
     if use_dtw:
         alignment = (dtw_from_distance_matrix(
                 word_distance_matrix.T))
             
         mapped_indices = alignment.get_warping_path()[:len(words_estimated)]
-        duration_of_mapping = time.time()-start
+        duration_of_mapping = 0
     else:
         mapped_indices = get_best_path_from_distance_matrix(word_distance_matrix)
 
-        duration_of_mapping = time.time()-start
+        duration_of_mapping = 0
         # In case or-tools doesn't converge, go to a faster, low-quality solution
         if len(mapped_indices) == 0 or duration_of_mapping > TIME_THRESHOLD_MAPPING+0.5:
             #mapped_indices = (dtw_from_distance_matrix(

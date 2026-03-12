@@ -5,17 +5,55 @@ import os
 import WordMatching as wm
 import pronunciationTrainer
 import base64
-import time
 import audioread
 import numpy as np
 from torchaudio.transforms import Resample
 import io
 import tempfile
+import time
+
+
+def _t(label, t0):
+    print(f"[TIMING] {label}: {time.time() - t0:.3f}s")
 
 trainer_SST_lambda = {}
 trainer_SST_lambda['en'] = pronunciationTrainer.getTrainer("en")
 
 transform = Resample(orig_freq=48000, new_freq=16000)
+
+
+def _warmup_static_init():
+    """Pre-warm lazy-initialized dependencies at module load (runs when Lambda env is created)."""
+    t0 = time.time()
+    trainer = trainer_SST_lambda["en"]
+    trainer.ipa_converter.convertToPhonem(
+        "the quick brown fox jumps over the lazy dog please say the following "
+        "words correctly practice your pronunciation every single day and you "
+        "will see great improvement in your speaking ability thank you"
+    )
+    _t("warmup: ipa_converter", t0)
+    t0 = time.time()
+    _ = transform(torch.zeros(1600)).unsqueeze(0)
+    _t("warmup: resample", t0)
+    # Pre-warm dtwalign: first call triggers JIT compilation, costing ~8s on
+    # the real request if not done here. Warm at both word and character level
+    # since both code paths are exercised per request.
+    t0 = time.time()
+    wm.get_best_mapped_words(["the", "quick", "brown", "fox"], ["the", "quick", "brown", "fox"])
+    _t("warmup: dtwalign word-level", t0)
+    t0 = time.time()
+    wm.get_best_mapped_words("hello", "hello")
+    _t("warmup: dtwalign char-level", t0)
+    t0 = time.time()
+    try:
+        trainer.asr_model.processAudio(np.zeros(1600, dtype=np.float32))
+        _t("warmup: sagemaker processAudio", t0)
+    except Exception as e:
+        _t("warmup: sagemaker processAudio (FAILED)", t0)
+        print(f"Pre-warm SageMaker skipped: {e}")
+
+
+_warmup_static_init()
 
 
 def get_trainer(language):
@@ -27,7 +65,7 @@ def get_trainer(language):
 
 
 def lambda_handler(event, context):
-    # Log the event for debugging
+    req_start = time.time()
     print(f"Received event: {json.dumps(event)}")
     
     # Handle warm-up events (scheduled events)
@@ -44,15 +82,17 @@ def lambda_handler(event, context):
             'body': json.dumps({'status': 'warmed'})
         }
 
+    t0 = time.time()
     if 'body' in event:
         data = json.loads(event['body'])
     else:
-        # Direct invocation or testing
         data = event
+    _t("parse body", t0)
 
     real_text = data['title']
-    file_bytes = base64.b64decode(
-        data['base64Audio'][22:].encode('utf-8'))
+    t0 = time.time()
+    file_bytes = base64.b64decode(data['base64Audio'][22:].encode('utf-8'))
+    _t("base64 decode", t0)
     language = data['language']
 
     if len(real_text) == 0:
@@ -67,27 +107,31 @@ def lambda_handler(event, context):
             'body': ''
         }
 
+    t0 = time.time()
     tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
     tmp_name = tmp.name
-
     try:
         tmp.write(file_bytes)
         tmp.flush()
-
         tmp.close()
-
         signal, fs = audioread_load(tmp_name)
-
     finally:
-
         os.remove(tmp_name)
+    _t("audioread_load", t0)
 
+    t0 = time.time()
     signal = transform(torch.Tensor(signal)).unsqueeze(0)
+    _t("resample", t0)
 
+    t0 = time.time()
     trainer = get_trainer(language)
-    result = trainer.processAudioForGivenText(signal, real_text)
+    _t("get_trainer", t0)
 
-    start = time.time()
+    t0 = time.time()
+    result = trainer.processAudioForGivenText(signal, real_text)
+    _t("processAudioForGivenText", t0)
+
+    t0 = time.time()
     real_transcripts_ipa = ' '.join(
         [word[0] for word in result['real_and_transcribed_words_ipa']])
     matched_transcripts_ipa = ' '.join(
@@ -115,8 +159,9 @@ def lambda_handler(event, context):
 
     pair_accuracy_category = ' '.join(
         [str(category) for category in result['pronunciation_categories']])
-    print('Time to post-process results: ', str(time.time()-start))
+    _t("post-process results", t0)
 
+    _t("TOTAL request", req_start)
     res = {'real_transcript': result['recording_transcript'],
            'ipa_transcript': result['recording_ipa'],
            'pronunciation_accuracy': str(int(result['pronunciation_accuracy'])),

@@ -11,6 +11,10 @@ from string import punctuation
 import time
 
 
+def _t(label, t0):
+    print(f"[TIMING] {label}: {time.time() - t0:.3f}s")
+
+
 def getTrainer(language: str):
 
     asr_model = mo.getASRModel(language,use_whisper=True)
@@ -127,15 +131,11 @@ class PronunciationTrainer:
 
     def processAudioForGivenText(self, recordedAudio: torch.Tensor = None, real_text=None):
 
-        start = time.time()
         recording_transcript, recording_ipa, word_locations = self.getAudioTranscript(
             recordedAudio)
-        print('Time for NN to transcript audio: ', str(time.time()-start))
 
-        start = time.time()
         real_and_transcribed_words, real_and_transcribed_words_ipa, mapped_words_indices = self.matchSampleAndRecordedWords(
             real_text, recording_transcript)
-        print('Time for matching transcripts: ', str(time.time()-start))
 
         start_time, end_time = self.getWordLocationsFromRecordInSeconds(
             word_locations, mapped_words_indices)
@@ -164,6 +164,7 @@ class PronunciationTrainer:
 
         current_recorded_transcript, current_recorded_word_locations = self.getTranscriptAndWordsLocations(
             current_recorded_audio.shape[1])
+
         current_recorded_ipa = self.ipa_converter.convertToPhonem(
             current_recorded_transcript)
 
@@ -182,7 +183,7 @@ class PronunciationTrainer:
             else:
                 start_time.append(float(word_locations[mapped_idx][0])/self.sampling_rate)
                 end_time.append(float(word_locations[mapped_idx][1])/self.sampling_rate)
-        return ' '.join([str(time) for time in start_time]), ' '.join([str(time) for time in end_time])
+        return ' '.join([str(t) for t in start_time]), ' '.join([str(t) for t in end_time])
 
     ##################### END ASR Functions ###########################
 
@@ -195,11 +196,14 @@ class PronunciationTrainer:
         else:
             words_real = real_text.split()
 
+        t0 = time.time()
         mapped_words, mapped_words_indices = wm.get_best_mapped_words(
             words_estimated, words_real)
+        _t("  match: get_best_mapped_words", t0)
 
         real_and_transcribed_words = []
         real_and_transcribed_words_ipa = []
+        t0 = time.time()
         for word_idx in range(len(words_real)):
             if word_idx >= len(mapped_words)-1:
                 mapped_words.append('-')
@@ -207,6 +211,8 @@ class PronunciationTrainer:
                 (words_real[word_idx],    mapped_words[word_idx]))
             real_and_transcribed_words_ipa.append((self.ipa_converter.convertToPhonem(words_real[word_idx]),
                                                    self.ipa_converter.convertToPhonem(mapped_words[word_idx])))
+        _t(f"  match: convertToPhonem loop ({len(words_real)} words)", t0)
+
         return real_and_transcribed_words, real_and_transcribed_words_ipa, mapped_words_indices
 
     def getPronunciationAccuracy(self, real_and_transcribed_words_ipa) -> float:

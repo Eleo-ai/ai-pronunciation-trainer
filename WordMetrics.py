@@ -1,5 +1,3 @@
-import numpy as np
-
 # ref from https://gitlab.com/-/snippets/1948157
 # For some variants, look here https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Python
 
@@ -29,27 +27,21 @@ def edit_distance_python2(a, b):
 
 #https://stackabuse.com/levenshtein-distance-and-text-similarity-in-python/
 def edit_distance_python(seq1, seq2):
-    size_x = len(seq1) + 1
-    size_y = len(seq2) + 1
-    matrix = np.zeros ((size_x, size_y))
-    for x in range(size_x):
-        matrix [x, 0] = x
-    for y in range(size_y):
-        matrix [0, y] = y
-
-    for x in range(1, size_x):
-        for y in range(1, size_y):
-            if seq1[x-1] == seq2[y-1]:
-                matrix [x,y] = min(
-                    matrix[x-1, y] + 1,
-                    matrix[x-1, y-1],
-                    matrix[x, y-1] + 1
-                )
-            else:
-                matrix [x,y] = min(
-                    matrix[x-1,y] + 1,
-                    matrix[x-1,y-1] + 1,
-                    matrix[x,y-1] + 1
-                )
-    #print (matrix)
-    return (matrix[size_x - 1, size_y - 1])
+    # Use the list-based O(min(n,m)) space implementation - avoids numpy matrix
+    # allocation overhead which makes this ~10x faster for short strings.
+    if len(seq1) < len(seq2):
+        return edit_distance_python(seq2, seq1)
+    if len(seq2) == 0:
+        return len(seq1)
+    prev = list(range(len(seq2) + 1))
+    curr = [0] * (len(seq2) + 1)
+    for i, c1 in enumerate(seq1, start=1):
+        curr[0] = i
+        for j, c2 in enumerate(seq2, start=1):
+            curr[j] = min(
+                curr[j - 1] + 1,
+                prev[j] + 1,
+                prev[j - 1] + (0 if c1 == c2 else 1),
+            )
+        prev, curr = curr, prev
+    return prev[len(seq2)]
